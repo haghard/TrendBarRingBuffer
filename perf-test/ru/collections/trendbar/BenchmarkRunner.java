@@ -6,8 +6,9 @@ public class BenchmarkRunner
 {
   public static void main(String[] args) throws Exception
   {
-    final TrendBarRingBuffer trendBarBuffer =
-            createSinglePCBuffer( 1 << 4, TrendBarAggregator.instance(),
+    final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer =
+    		createSinglePCBuffer( 1 << 4, 
+    				TrendBarAggregator.<String, TrendBar, Quote>instance(),
                     String.class, TrendBar.class, Quote.class );
 
       new TrendBarBenchmark( trendBarBuffer ).runBenchmark();

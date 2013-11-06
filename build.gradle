@@ -1,12 +1,7 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        jcenter()
-    }
-}
 
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'eclipse'
 
 group = 'ru.collections.trendbar'
 version = '0.1'
@@ -15,6 +10,7 @@ version = '0.1'
 description = 'Ring Buffer for Trendbar issue'
 
 repositories {
+    mavenLocal()
     jcenter()
 }
 

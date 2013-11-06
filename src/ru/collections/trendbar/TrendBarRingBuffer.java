@@ -33,11 +33,11 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
 
   private final TrendBarAggregator<K, V, V2> trendBarAggregator;
 
-  public static <K, V extends TrendBar, V2 extends Quote> TrendBarRingBuffer createSinglePCBuffer(
-          final int capacity, TrendBarAggregator<Object, TrendBar, Quote> trendBarAggregator,
+  public static <K, V extends TrendBar, V2 extends Quote> TrendBarRingBuffer<K, V, V2> createSinglePCBuffer(
+          final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator,
           Class<String> keyClass, Class<TrendBar> valueCLass, Class<Quote> itemClass )
   {
-    return new TrendBarRingBuffer( capacity, trendBarAggregator );
+    return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarAggregator );
   }
 
   private TrendBarRingBuffer( final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator )
@@ -126,7 +126,6 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
   private void cleanUp()
   {
     final long prevRead = this.prevReadPosition.get();
-    boolean result = false;
 
     if ( prevRead == prevClean )
     {

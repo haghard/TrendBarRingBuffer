@@ -4,6 +4,7 @@ abstract class TrendBarAggregator<K, V extends TrendBar, V2 extends Quote>
 {
   abstract V tryAggregate( V trendBar, V2 quote );
 
+  @SuppressWarnings("unchecked")
   public static <K, V extends TrendBar, V2 extends Quote> TrendBarAggregator<K, V, V2> instance()
   {
     return ( TrendBarAggregator<K, V, V2> ) new MaxMinPriceAggregator();

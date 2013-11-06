@@ -1,4 +1,4 @@
 TrendBarRingBuffer
 ==================
 
-TrendBarRingBuffer based in ideas from CoalescingRingBuffer
+TrendBarRingBuffer based on ideas from CoalescingRingBuffer

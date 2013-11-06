@@ -7,3 +7,6 @@ TrendBarRingBuffer.iml
 TrendBarRingBuffer.ipr
 TrendBarRingBuffer.iws
 pom.xml
+.classpath
+.project
+.settings/
