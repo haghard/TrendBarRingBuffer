@@ -1,0 +1,9 @@
+.gradle
+classes
+test-classes
+build
+.idea
+TrendBarRingBuffer.iml
+TrendBarRingBuffer.ipr
+TrendBarRingBuffer.iws
+pom.xml

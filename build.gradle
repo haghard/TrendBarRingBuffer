@@ -1,0 +1,59 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        jcenter()
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+
+group = 'ru.collections.trendbar'
+version = '0.1'
+
+// base on ideas from LMAX Collections CoalescingBuffer
+description = 'Ring Buffer for Trendbar issue'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile group: 'com.google.guava', name: 'guava', version: '15.0'
+}
+
+sourceSets {
+    main.java.srcDirs 'src'
+    test.java.srcDir 'perf-test'
+}
+
+sourceSets.main.output.classesDir = 'classes'
+sourceSets.test.output.classesDir = 'test-classes'
+
+
+test {
+    minHeapSize = "226m"
+    maxHeapSize = "512m"
+    jvmArgs "-XX:MaxPermSize=128m"
+    testLogging.showStandardStreams = true
+}
+
+task benchmark(description: '') {
+
+    doLast() {
+        def commandScript = "java -cp test-classes/:classes/ ru.collections.trendbar.BenchmarkRunner"
+        def process = ["/bin/bash", "-s"].execute()
+        process.withWriter { it.write(commandScript) }
+        process.consumeProcessOutput(System.out, System.err)
+        def code = process.waitFor()
+        println """benchmark exit code ${code}"""
+    }
+}
+
+benchmark.dependsOn compileTestJava
+
+build.dependsOn benchmark
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.8'
+}
