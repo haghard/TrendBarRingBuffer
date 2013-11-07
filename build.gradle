@@ -37,7 +37,7 @@ test {
 task benchmark(description: '') {
 
     doLast() {
-        def commandScript = "java -cp test-classes/:classes/ ru.collections.trendbar.BenchmarkRunner"
+        def commandScript = "java -XX:+UseCondCardMark -XX:CompileThreshold=100000 -cp test-classes/:classes/ ru.collections.trendbar.BenchmarkRunner"
         def process = ["/bin/bash", "-s"].execute()
         process.withWriter { it.write(commandScript) }
         process.consumeProcessOutput(System.out, System.err)

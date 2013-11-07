@@ -1,8 +1,5 @@
 package ru.collections.trendbar;
 
-
-import com.google.common.base.Objects;
-
 import static java.lang.String.format;
 
 public class TrendBar
@@ -68,11 +65,14 @@ public class TrendBar
 
   public String toString()
   {
-    return Objects.toStringHelper(this)
-      .add( "highPrice", format( "$%.2f", highPrice)  )
-      .add( "lowPrice", format( "$%.2f", lowPrice ) )
-      .add( "symbol", symbol )
-      .toString();
+    return new StringBuilder()
+            .append( "highPrice: " )
+            .append( format( "$%.2f ", highPrice ) )
+            .append( "lowPrice: " )
+            .append( format( "$%.2f ", lowPrice ) )
+            .append( "symbol: " ).append( symbol )
+            .append( "] \n" )
+            .toString();
   }
 
   public enum TrendPeriod

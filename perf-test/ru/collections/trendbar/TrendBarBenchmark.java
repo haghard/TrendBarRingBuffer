@@ -63,7 +63,7 @@ public class TrendBarBenchmark extends AbstractBenchmark
       {
         pollNumber += trendBarBuffer.poll( trendBars );
         //millisec sleep
-        //LockSupport.parkNanos( 1000000 );
+        LockSupport.parkNanos( 1000000 );
         trendBars.clear();
       }
     }

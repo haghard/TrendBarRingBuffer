@@ -40,6 +40,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
     return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarAggregator );
   }
 
+  @SuppressWarnings("unchecked")
   private TrendBarRingBuffer( final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator )
   {
     this.capacity = findNextPositivePowerOfTwo( capacity );

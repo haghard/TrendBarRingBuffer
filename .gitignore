@@ -10,3 +10,5 @@ pom.xml
 .classpath
 .project
 .settings/
+/bin/
+/out/
