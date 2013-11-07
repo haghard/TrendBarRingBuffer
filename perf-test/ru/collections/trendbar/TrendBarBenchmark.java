@@ -1,7 +1,9 @@
 package ru.collections.trendbar;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -63,7 +65,7 @@ public class TrendBarBenchmark extends AbstractBenchmark
       {
         pollNumber += trendBarBuffer.poll( trendBars );
         //millisec sleep
-        //LockSupport.parkNanos( 1000000 );
+        LockSupport.parkNanos( 1000000 );
         trendBars.clear();
       }
     }
@@ -74,7 +76,7 @@ public class TrendBarBenchmark extends AbstractBenchmark
   {
     private final long iterations;
     private final TrendBarRingBuffer trendBarBuffer;
-    private final ThreadLocalRandom rnd = ThreadLocalRandom.current();
+    private final ThreadLocalRandom indexRnd = ThreadLocalRandom.current();
     private final ThreadLocalRandom priceRnd = ThreadLocalRandom.current();
     private final String[] symbols = { "RUS-USA", "RUS-EURO", "RUS-GBP", "USA-GBP", "EURO-USA", "EURO-RUS", "EURO-GBP" };
 
@@ -88,11 +90,14 @@ public class TrendBarBenchmark extends AbstractBenchmark
     public void run()
     {
       int i = 0;
-      double newPrice = 0;
+      double newPrice;
+
       while ( i < iterations )
       {
-        final int index = rnd.nextInt( 0, 7 );
+        final int index = indexRnd.nextInt( 0, 7 );
         String symbol = symbols[index];
+
+        newPrice = 1000 * priceRnd.nextDouble();
 
         final boolean success =
                 trendBarBuffer.offer( symbol, new Quote( newPrice, System.currentTimeMillis(), symbol ) );
@@ -101,7 +106,6 @@ public class TrendBarBenchmark extends AbstractBenchmark
           throw new AssertionError( "error in offer" );
         }
 
-        newPrice = 100 * priceRnd.nextDouble();
         i++;
       }
     }

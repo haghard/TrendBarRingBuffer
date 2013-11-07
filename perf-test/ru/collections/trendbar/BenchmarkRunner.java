@@ -4,13 +4,13 @@ import static ru.collections.trendbar.TrendBarRingBuffer.createSinglePCBuffer;
 
 public class BenchmarkRunner
 {
-  public static void main(String[] args) throws Exception
+  public static void main( String[] args ) throws Exception
   {
     final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer =
-    		createSinglePCBuffer( 1 << 4, 
-    				TrendBarAggregator.<String, TrendBar, Quote>instance(),
+            createSinglePCBuffer( 1 << 4,
+                    TrendBarAggregator.<String, TrendBar, Quote>instance(),
                     String.class, TrendBar.class, Quote.class );
 
-      new TrendBarBenchmark( trendBarBuffer ).runBenchmark();
+    new TrendBarBenchmark( trendBarBuffer ).runBenchmark();
   }
 }

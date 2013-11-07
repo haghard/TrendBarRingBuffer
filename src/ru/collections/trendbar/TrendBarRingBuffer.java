@@ -1,35 +1,141 @@
 package ru.collections.trendbar;
 
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
-/**
- * @param <K>  key
- * @param <V>  stored value
- * @param <V2> incoming value
- */
-public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> implements TrendBarBuffer<K, V, V2>
+class LPad
 {
-  private final int mask;
-  private final int capacity;
+  public long p00, p01, p02, p03, p04, p05, p06, p07;
+  public long p10, p11, p12, p13, p14, p15, p16;
+}
 
-  // producer write position index
-  private final AtomicLong writePosition = new PaddedAtomicLong( 1 );
+class ColdField<K, V> extends LPad
+{
+  protected final int mask;
+  protected final int capacity;
+
+  protected final K[] keys;
+  protected final V[] currentTrends;
+
+  protected static final int SPARSE_SHIFT = Integer.getInteger( "sparse.shift", 2 );
+
+  ColdField( int capacity, Class<V> valueCLass )
+  {
+    this.capacity = findNextPositivePowerOfTwo( capacity );
+    this.mask = capacity - 1;
+    this.keys = ( K[] ) new Object[this.capacity << SPARSE_SHIFT];
+    this.currentTrends = ( V[] ) Array.newInstance( valueCLass, this.capacity << SPARSE_SHIFT );
+  }
+
+  protected int findNextPositivePowerOfTwo( final int value )
+  {
+    return 1 << ( 32 - Integer.numberOfLeadingZeros( value - 1 ) );
+  }
+}
+
+class LPad1<K, V> extends ColdField<K, V>
+{
+  public long p00, p01, p02, p03, p04, p05, p06, p07;
+  public long p10, p11, p12, p13, p14, p15, p16;
+
+  LPad1( int capacity, Class<V> valueCLass )
+  {
+    super( capacity, valueCLass );
+  }
+}
+
+class WriteField<K, V> extends LPad1<K, V>
+{
+  protected volatile long writePosition = 1;
+
+  WriteField( int capacity, Class<V> valueCLass )
+  {
+    super( capacity, valueCLass );
+  }
+}
+
+class L2Pad<K, V> extends WriteField<K, V>
+{
+  public long p00, p01, p02, p03, p04, p05, p06, p07;
+  public long p30, p31, p32, p33, p34, p35, p36;
+
+  L2Pad( int capacity, Class<V> valueCLass )
+  {
+    super( capacity, valueCLass );
+  }
+}
+
+class ReadField<K, V> extends L2Pad<K, V>
+{
+  protected volatile long readPosition = 1;
+
+  ReadField( int capacity, Class<V> valueCLass )
+  {
+    super( capacity, valueCLass );
+  }
+}
+
+class L3Pad<K, V> extends ReadField<K, V>
+{
+  public long p00, p01, p02, p03, p04, p05, p06, p07;
+  public long p50, p51, p52, p53, p54, p55, p56;
+
+  L3Pad( int capacity, Class<V> valueCLass )
+  {
+    super( capacity, valueCLass );
+  }
+}
+
+public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> extends L3Pad<K, V> implements TrendBarBuffer<K, V, V2>
+{
+  protected static final long ARRAY_BASE;
+  protected static final int ELEMENT_SCALE;
+  protected final static long WRITE_CURSOR_OFFSET;
+  protected final static long READ_CURSOR_OFFSET;
+
+  static
+  {
+    try
+    {
+      ARRAY_BASE = Unsafe0.getUnsafe().arrayBaseOffset( Object[].class );
+      ELEMENT_SCALE = Unsafe0.getUnsafe().arrayIndexScale( Object[].class );
+      READ_CURSOR_OFFSET = Unsafe0.getUnsafe().objectFieldOffset( ReadField.class.getDeclaredField( "readPosition" ) );
+      WRITE_CURSOR_OFFSET = Unsafe0.getUnsafe().objectFieldOffset( WriteField.class.getDeclaredField( "writePosition" ) );
+    }
+    catch ( NoSuchFieldException e )
+    {
+      throw new RuntimeException( e );
+    }
+  }
+
+  private void writeWriterCursorOrdered( long v )
+  {
+    Unsafe0.getUnsafe().putOrderedLong( this, WRITE_CURSOR_OFFSET, v );
+  }
+
+  private void readReaderCursorOrdered( long v )
+  {
+    Unsafe0.getUnsafe().putOrderedLong( this, READ_CURSOR_OFFSET, v );
+  }
+
+  private long writerCursor()
+  {
+    return this.writePosition;
+  }
+
+  private long readerCursor()
+  {
+    return this.readPosition;
+  }
 
   // the prev produces transaction clean position
-  private volatile long prevClean = 0;
-
-  // consumer read position
-  private final AtomicLong readPosition = new PaddedAtomicLong( 1 );
+  private long prevCleanCursor = 0;
 
   // the prev consumer transaction read position
-  private final AtomicLong prevReadPosition = new PaddedAtomicLong( 0 );
+  private final AtomicLong prevReadCursor = new PaddedAtomicLong( 0 );
 
   private long rejectionCount = 0;
-
-  private final K[] keys;
-  private final AtomicReferenceArray<V> currentTrends;
 
   private final TrendBarAggregator<K, V, V2> trendBarAggregator;
 
@@ -37,21 +143,18 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
           final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator,
           Class<String> keyClass, Class<TrendBar> valueCLass, Class<Quote> itemClass )
   {
-    return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarAggregator );
+    return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarAggregator, valueCLass );
   }
 
-  private TrendBarRingBuffer( final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator )
+  private TrendBarRingBuffer( final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator, Class<TrendBar> valueCLass )
   {
-    this.capacity = findNextPositivePowerOfTwo( capacity );
-    this.mask = capacity - 1;
+    super( capacity, ( Class<V> ) valueCLass );
     this.trendBarAggregator = trendBarAggregator;
-    this.keys = ( K[] ) new Object[this.capacity];
-    this.currentTrends = new AtomicReferenceArray<V>( this.capacity );
   }
 
-  public static int findNextPositivePowerOfTwo( final int value )
+  private long elementOffsetInBuffer( long index )
   {
-    return 1 << ( 32 - Integer.numberOfLeadingZeros( value - 1 ) );
+    return ARRAY_BASE + ( ( ( index & mask ) << SPARSE_SHIFT ) * ELEMENT_SCALE );
   }
 
   /**
@@ -66,20 +169,23 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
     if ( key == null || value == null )
       throw new NullPointerException( "Null is not a valid element" );
 
-    final long writePosition = this.writePosition.get();
+    final long writeCursor = writerCursor();
 
     //iterate from reader pos to write pos to find matched key
-    for ( long readPosition = this.readPosition.get(); readPosition < writePosition; readPosition++ )
+    for ( long readCursor = readerCursor(); readCursor < writeCursor; readCursor++ )
     {
-      final int keyIndex = mask( readPosition );
-      if ( key.equals( keys[keyIndex] ) )
+      if ( key.equals( keys[ mask( readCursor ) ] ) )
       {
-        V mergedTrendBar = ( V ) trendBarAggregator.tryAggregate( currentTrends.get( keyIndex ), value );
+        long index = elementOffsetInBuffer( readCursor );
+        // LOAD/LOAD barrier
+        V currentTrendBar = ( V ) Unsafe0.getUnsafe().getObjectVolatile( currentTrends, index );
+        V mergedTrendBar = ( V ) trendBarAggregator.tryAggregate( currentTrendBar, value );
         if ( mergedTrendBar != null )
         {
           //accept update
-          currentTrends.lazySet( keyIndex, mergedTrendBar );
-          if ( this.readPosition.get() <= readPosition ) //check that the reader has not read it yet
+          //STORE/STORE barrier
+          Unsafe0.getUnsafe().putOrderedObject( currentTrends, index, mergedTrendBar );
+          if ( readerCursor() <= readCursor ) //check that the reader has not read it yet
           {
             return true;
           }
@@ -91,8 +197,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
              */
             break;
           }
-        }
-        else
+        } else
         {
           return true;
         }
@@ -125,18 +230,19 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
 
   private void cleanUp()
   {
-    final long prevRead = this.prevReadPosition.get();
+    final long prevReadCursor = this.prevReadCursor.get();
 
-    if ( prevRead == prevClean )
+    if ( prevReadCursor == prevCleanCursor )
     {
       return;
     }
 
-    while ( prevClean < prevRead )
+    while ( prevCleanCursor < prevReadCursor )
     {
-      int index = mask( ++prevClean );
-      this.keys[index] = null;
-      this.currentTrends.lazySet( index, null );
+      this.keys[mask( prevCleanCursor + 1 )] = null;
+      // STORE/STORE barrier
+      Unsafe0.getUnsafe().putOrderedObject( currentTrends, elementOffsetInBuffer( prevCleanCursor + 1 ), null );
+      prevCleanCursor++;
     }
   }
 
@@ -146,11 +252,11 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
    */
   private void store( K key, V2 value )
   {
-    final long nextWrite = this.writePosition.get();
-    final int index = mask( nextWrite );
-    this.keys[index] = key;
-    this.currentTrends.lazySet( index, trendBarAggregator.produceBaseOn( key, value ) );
-    this.writePosition.lazySet( nextWrite + 1 );
+    final long nextWrite = writerCursor();
+    this.keys[ mask( nextWrite ) ] = key;
+    // STORE/STORE barrier
+    Unsafe0.getUnsafe().putOrderedObject( currentTrends, elementOffsetInBuffer( nextWrite ), trendBarAggregator.produceBaseOn( key, value ) );
+    writeWriterCursorOrdered( nextWrite + 1 );
   }
 
   private boolean isFull()
@@ -160,7 +266,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
 
   public int size()
   {
-    return ( int ) ( writePosition.get() - prevReadPosition.get() - 1 );
+    return ( int ) ( writerCursor() - prevReadCursor.get() - 1 );
   }
 
   @Override
@@ -177,30 +283,30 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
    */
   public int poll( Collection<? super V> bucket )
   {
-    this.readPosition.lazySet( this.writePosition.get() );
+    readReaderCursorOrdered( writerCursor() );
     return fill( bucket );
   }
 
   private int fill( Collection<? super V> bucket )
   {
-    final long readPosition = this.readPosition.get();
-    final long prevReadPosition = this.prevReadPosition.get();
+    final long readPosition = readerCursor();
+    final long prevReadPosition = this.prevReadCursor.get();
 
     for ( long readIndex = prevReadPosition + 1; readIndex < readPosition; readIndex++ )
     {
-      final int index = mask( readIndex );
-      bucket.add( currentTrends.get( index ) );
+      // LOAD/LOAD barrier
+      bucket.add( ( V ) Unsafe0.getUnsafe().getObjectVolatile( currentTrends, elementOffsetInBuffer( readIndex ) ) );
     }
 
     int readCount = ( int ) ( readPosition - prevReadPosition - 1 );
-    this.prevReadPosition.lazySet( readPosition - 1 );
+    this.prevReadCursor.lazySet( readPosition - 1 );
 
     return readCount;
   }
 
   private int mask( long value )
   {
-    return ( ( int ) value ) & mask;
+    return ( int ) ( value & mask );
   }
 
   public long rejectionCount()
@@ -211,12 +317,12 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
   @Override
   public long writePosition()
   {
-    return this.writePosition.get();
+    return writerCursor();
   }
 
   @Override
   public long readPosition()
   {
-    return this.readPosition.get();
+    return readerCursor();
   }
 }
