@@ -8,10 +8,10 @@ import java.util.concurrent.locks.LockSupport;
 
 public class TrendBarBenchmark extends AbstractBenchmark
 {
-  private final TrendBarRingBuffer<?, ?, ?> trendBarBuffer;
+  private final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer;
   private static final long ITERATIONS = 1000L * 1000L * 50L;
 
-  TrendBarBenchmark( TrendBarRingBuffer<?, ?, ?> trendBarBuffer )
+  TrendBarBenchmark( TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer )
   {
     this.trendBarBuffer = trendBarBuffer;
   }
@@ -45,11 +45,11 @@ public class TrendBarBenchmark extends AbstractBenchmark
    */
   static class Consumer extends Thread
   {
-    final TrendBarRingBuffer trendBarBuffer;
+    final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer;
     final AtomicBoolean flag;
     int pollNumber = 0;
 
-    public Consumer( TrendBarRingBuffer trendBarBuffer, AtomicBoolean flag )
+    public Consumer( TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer, AtomicBoolean flag )
     {
       this.trendBarBuffer = trendBarBuffer;
       this.flag = flag;
@@ -62,8 +62,8 @@ public class TrendBarBenchmark extends AbstractBenchmark
       while ( flag.get() )
       {
         pollNumber += trendBarBuffer.poll( trendBars );
-        //millisec sleep
-        LockSupport.parkNanos( 1000000 );
+        //run 100 times in second
+        LockSupport.parkNanos( 10000 );
         trendBars.clear();
       }
     }
@@ -73,12 +73,12 @@ public class TrendBarBenchmark extends AbstractBenchmark
   static class Producer extends Thread
   {
     private final long iterations;
-    private final TrendBarRingBuffer trendBarBuffer;
+    private final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer;
     private final ThreadLocalRandom rnd = ThreadLocalRandom.current();
     private final ThreadLocalRandom priceRnd = ThreadLocalRandom.current();
     private final String[] symbols = { "RUS-USA", "RUS-EURO", "RUS-GBP", "USA-GBP", "EURO-USA", "EURO-RUS", "EURO-GBP" };
 
-    public Producer( TrendBarRingBuffer trendBarBuffer, long iterations )
+    public Producer( TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer, long iterations )
     {
       this.trendBarBuffer = trendBarBuffer;
       this.iterations = iterations;

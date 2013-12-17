@@ -8,7 +8,7 @@ public class BenchmarkRunner
   {
     final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer =
     		createSinglePCBuffer( 1 << 4, 
-    				TrendBarAggregator.<String, TrendBar, Quote>instance(),
+    				TrendBarMapper.<String, TrendBar, Quote>instance(),
                     String.class, TrendBar.class, Quote.class );
 
       new TrendBarBenchmark( trendBarBuffer ).runBenchmark();

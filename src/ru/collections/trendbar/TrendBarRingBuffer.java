@@ -29,23 +29,24 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
   private long rejectionCount = 0;
 
   private final K[] keys;
+
   private final AtomicReferenceArray<V> currentTrends;
 
-  private final TrendBarAggregator<K, V, V2> trendBarAggregator;
+  private final TrendBarMapper<K, V, V2> trendBarAggregator;
 
   public static <K, V extends TrendBar, V2 extends Quote> TrendBarRingBuffer<K, V, V2> createSinglePCBuffer(
-          final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator,
+          final int capacity, TrendBarMapper<K, V, V2> trendBarMapper,
           Class<String> keyClass, Class<TrendBar> valueCLass, Class<Quote> itemClass )
   {
-    return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarAggregator );
+    return new TrendBarRingBuffer<K, V, V2>( capacity, trendBarMapper );
   }
 
   @SuppressWarnings("unchecked")
-  private TrendBarRingBuffer( final int capacity, TrendBarAggregator<K, V, V2> trendBarAggregator )
+  private TrendBarRingBuffer( final int capacity, TrendBarMapper<K, V, V2> trendBarMapper )
   {
     this.capacity = findNextPositivePowerOfTwo( capacity );
     this.mask = capacity - 1;
-    this.trendBarAggregator = trendBarAggregator;
+    this.trendBarAggregator = trendBarMapper;
     this.keys = ( K[] ) new Object[this.capacity];
     this.currentTrends = new AtomicReferenceArray<V>( this.capacity );
   }
@@ -75,7 +76,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
       final int keyIndex = mask( readPosition );
       if ( key.equals( keys[keyIndex] ) )
       {
-        V mergedTrendBar = ( V ) trendBarAggregator.tryAggregate( currentTrends.get( keyIndex ), value );
+        V mergedTrendBar = ( V ) trendBarAggregator.map( currentTrends.get( keyIndex ), value );
         if ( mergedTrendBar != null )
         {
           //accept update
@@ -150,7 +151,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
     final long nextWrite = this.writePosition.get();
     final int index = mask( nextWrite );
     this.keys[index] = key;
-    this.currentTrends.lazySet( index, trendBarAggregator.produceBaseOn( key, value ) );
+    this.currentTrends.lazySet( index, trendBarAggregator.newInstance( key, value ) );
     this.writePosition.lazySet( nextWrite + 1 );
   }
 

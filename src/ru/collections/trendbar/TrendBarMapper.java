@@ -1,21 +1,21 @@
 package ru.collections.trendbar;
 
-abstract class TrendBarAggregator<K, V extends TrendBar, V2 extends Quote>
+abstract class TrendBarMapper<K, V extends TrendBar, V2 extends Quote>
 {
-  abstract V tryAggregate( V trendBar, V2 quote );
+  abstract V map( V trendBar, V2 quote );
+
+  abstract V newInstance( K key, V2 value );
 
   @SuppressWarnings("unchecked")
-  public static <K, V extends TrendBar, V2 extends Quote> TrendBarAggregator<K, V, V2> instance()
+  public static <K, V extends TrendBar, V2 extends Quote> TrendBarMapper<K, V, V2> instance()
   {
-    return ( TrendBarAggregator<K, V, V2> ) new MaxMinPriceAggregator();
+    return ( TrendBarMapper<K, V, V2> ) new MaxMinPriceMapper();
   }
 
-  public abstract V produceBaseOn( K key, V2 value );
-
-  final static class MaxMinPriceAggregator extends TrendBarAggregator<String, TrendBar, Quote>
+  final static class MaxMinPriceMapper extends TrendBarMapper<String, TrendBar, Quote>
   {
     @Override
-    TrendBar tryAggregate( TrendBar trendBar, Quote quote )
+    TrendBar map( TrendBar trendBar, Quote quote )
     {
       if ( trendBar == null )
       {
@@ -44,7 +44,7 @@ abstract class TrendBarAggregator<K, V extends TrendBar, V2 extends Quote>
     }
 
     @Override
-    public TrendBar produceBaseOn( String key, Quote value )
+    TrendBar newInstance( String key, Quote value )
     {
       return new TrendBar( value, key );
     }

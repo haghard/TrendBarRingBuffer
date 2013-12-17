@@ -11,11 +11,10 @@ description = 'Ring Buffer for Trendbar issue'
 
 repositories {
     mavenLocal()
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
-    compile group: 'com.google.guava', name: 'guava', version: '15.0'
 }
 
 sourceSets {
