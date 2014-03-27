@@ -27,7 +27,7 @@ public class TrendBarBenchmark extends AbstractBenchmark
   {
     final AtomicBoolean flag = new AtomicBoolean( true );
     final Thread consumerThread = new Consumer( trendBarBuffer, flag );
-    final Thread producerThread = new Producer( trendBarBuffer, ITERATIONS );
+    final Producer producerThread = new Producer( trendBarBuffer, ITERATIONS );
 
     producerThread.start();
     consumerThread.start();
@@ -37,6 +37,8 @@ public class TrendBarBenchmark extends AbstractBenchmark
     flag.set( false );
 
     long opsPerSecond = ( ITERATIONS * 1000L ) / ( System.currentTimeMillis() - start );
+    System.out.format("failes number %d, gap %d ", producerThread.failes, trendBarBuffer.gap );
+    trendBarBuffer.gap = 0;
     return opsPerSecond;
   }
 
@@ -58,7 +60,7 @@ public class TrendBarBenchmark extends AbstractBenchmark
     @Override
     public void run()
     {
-      final List<TrendBar> trendBars = new ArrayList<TrendBar>( 7 );
+      final List<TrendBar> trendBars = new ArrayList<TrendBar>( 8 );
       while ( flag.get() )
       {
         pollNumber += trendBarBuffer.poll( trendBars );
@@ -73,10 +75,11 @@ public class TrendBarBenchmark extends AbstractBenchmark
   static class Producer extends Thread
   {
     private final long iterations;
+    int failes = 0;
     private final TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer;
     private final ThreadLocalRandom rnd = ThreadLocalRandom.current();
     private final ThreadLocalRandom priceRnd = ThreadLocalRandom.current();
-    private final String[] symbols = { "RUS-USA", "RUS-EURO", "RUS-GBP", "USA-GBP", "EURO-USA", "EURO-RUS", "EURO-GBP" };
+    private final String[] symbols = { "RUS-USA", "RUS-EURO", "RUS-GBP", "USA-GBP", "EURO-USA", "EURO-RUS", "EURO-GBP", "CHINA-RUS" };
 
     public Producer( TrendBarRingBuffer<String, TrendBar, Quote> trendBarBuffer, long iterations )
     {
@@ -91,14 +94,13 @@ public class TrendBarBenchmark extends AbstractBenchmark
       double newPrice = 0;
       while ( i < iterations )
       {
-        final int index = rnd.nextInt( 0, 7 );
-        String symbol = symbols[index];
+        final int index = rnd.nextInt( 0, 8 );
+        final String symbol = symbols[index];
 
-        final boolean success =
-                trendBarBuffer.offer( symbol, new Quote( newPrice, System.currentTimeMillis(), symbol ) );
+        final boolean success = trendBarBuffer.offer( symbol, new Quote( newPrice, System.currentTimeMillis(), symbol ) );
         if ( !success )
         {
-          throw new AssertionError( "error in offer" );
+          failes++;
         }
 
         newPrice = 100 * priceRnd.nextDouble();

@@ -1,6 +1,7 @@
 package ru.collections.trendbar;
 
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -33,6 +34,8 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
   private final AtomicReferenceArray<V> currentTrends;
 
   private final TrendBarMapper<K, V, V2> trendBarAggregator;
+
+  int gap = 0;
 
   public static <K, V extends TrendBar, V2 extends Quote> TrendBarRingBuffer<K, V, V2> createSinglePCBuffer(
           final int capacity, TrendBarMapper<K, V, V2> trendBarMapper,
@@ -157,6 +160,7 @@ public class TrendBarRingBuffer<K, V extends TrendBar, V2 extends Quote> impleme
 
   private boolean isFull()
   {
+    gap = Math.max(gap, size());
     return size() == capacity;
   }
 
